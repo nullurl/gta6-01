@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SOLMARA — Open-World Crime Game</title>
+<style>
+  :root {
+    --ink: #fff7e8;
+    --ink-dim: #d8c9a8;
+    --panel: rgba(16, 20, 28, 0.72);
+    --panel-line: rgba(255, 210, 110, 0.35);
+    --gold: #ffd25e;
+    --coral: #ff7a5c;
+    --teal: #57d9c5;
+  }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #0e1420; font-family: "Trebuchet MS", Verdana, sans-serif; color: var(--ink); }
+  #game { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+  #status { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+  .hud { position: fixed; pointer-events: none; z-index: 5; }
+  #hud-topleft { top: 14px; left: 14px; background: var(--panel); border: 1px solid var(--panel-line); border-radius: 10px; padding: 10px 14px; min-width: 190px; }
+  #stars { font-size: 22px; letter-spacing: 3px; color: var(--gold); text-shadow: 0 0 8px rgba(255, 210, 94, 0.7); line-height: 1.1; }
+  #stars .off { color: #4a4f5c; text-shadow: none; }
+  #healthbar { height: 10px; background: #333a47; border-radius: 5px; margin-top: 8px; overflow: hidden; }
+  #healthfill { height: 100%; width: 100%; background: linear-gradient(90deg, #7be495, #3ecf6e); border-radius: 5px; transition: width 0.2s; }
+  #money { margin-top: 7px; font-size: 19px; font-weight: bold; color: #8fe388; letter-spacing: 1px; }
+  #district { margin-top: 3px; font-size: 12px; color: var(--ink-dim); letter-spacing: 2px; text-transform: uppercase; }
+
+  #hud-objective { top: 14px; left: 50%; transform: translateX(-50%); background: var(--panel); border: 1px solid var(--panel-line); border-radius: 10px; padding: 9px 18px; text-align: center; max-width: 46vw; }
+  #mission-name { font-size: 12px; letter-spacing: 3px; color: var(--gold); text-transform: uppercase; }
+  #mission-text { font-size: 16px; margin-top: 2px; }
+
+  #hud-topright { top: 14px; right: 14px; }
+  #minimap { width: 200px; height: 150px; border: 2px solid var(--panel-line); border-radius: 10px; background: #10151f; display: block; }
+  #clock { text-align: right; font-size: 13px; color: var(--ink-dim); margin-top: 5px; letter-spacing: 1px; }
+
+  #hud-bottomleft { bottom: 14px; left: 14px; background: var(--panel); border: 1px solid var(--panel-line); border-radius: 10px; padding: 9px 14px; font-size: 14px; }
+  #speed { font-size: 24px; font-weight: bold; }
+  #carname { color: var(--ink-dim); font-size: 13px; }
+  #hint { margin-top: 4px; color: var(--ink-dim); font-size: 12px; }
+
+  #feed { bottom: 14px; right: 14px; text-align: right; font-size: 14px; }
+  #feed div { background: var(--panel); border: 1px solid var(--panel-line); border-radius: 8px; padding: 6px 12px; margin-top: 6px; display: inline-block; clear: both; float: right; }
+
+  #banner { top: 32%; left: 50%; transform: translate(-50%, -50%); text-align: center; display: none; }
+  #banner .big { font-size: 44px; font-weight: bold; letter-spacing: 4px; color: var(--gold); text-shadow: 0 3px 18px rgba(0,0,0,0.8); }
+  #banner .sub { font-size: 18px; margin-top: 6px; text-shadow: 0 2px 10px rgba(0,0,0,0.8); }
+
+  .overlay { position: fixed; inset: 0; z-index: 10; display: flex; align-items: center; justify-content: center; background: radial-gradient(ellipse at 50% 35%, rgba(30, 60, 90, 0.88), rgba(8, 10, 18, 0.94)); }
+  .card { text-align: center; max-width: 640px; padding: 30px 44px; }
+  .card h1 { font-size: 64px; margin: 0; letter-spacing: 10px; color: var(--gold); text-shadow: 0 0 30px rgba(255, 190, 60, 0.45); }
+  .card h2 { font-size: 30px; margin: 0 0 10px; letter-spacing: 6px; color: var(--gold); }
+  .card .tag { font-size: 16px; letter-spacing: 4px; color: var(--teal); text-transform: uppercase; margin-top: 2px; }
+  .card p { color: var(--ink-dim); font-size: 15px; line-height: 1.6; }
+  .card .controls { text-align: left; display: inline-block; font-size: 14px; color: var(--ink-dim); line-height: 1.9; margin: 10px 0 18px; }
+  .card .controls b { color: var(--ink); }
+  .btn { pointer-events: auto; cursor: pointer; display: inline-block; margin: 6px; padding: 12px 30px; font-size: 17px; font-weight: bold; letter-spacing: 2px; color: #14100a; background: linear-gradient(180deg, #ffd25e, #f5a623); border: none; border-radius: 8px; box-shadow: 0 4px 0 #9c6a12; }
+  .btn:hover { filter: brightness(1.08); }
+  .btn:active { transform: translateY(2px); box-shadow: 0 2px 0 #9c6a12; }
+  .btn.ghost { background: transparent; color: var(--ink); border: 2px solid var(--panel-line); box-shadow: none; }
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+<canvas id="game" aria-label="SOLMARA: an open-world crime game. Drive, explore the city, take missions and escape the police."></canvas>
+<p id="status" role="status" aria-live="polite"></p>
+
+<div class="hud" id="hud-topleft">
+  <div id="stars"><span class="off">★★★★★</span></div>
+  <div id="healthbar"><div id="healthfill"></div></div>
+  <div id="money">$0</div>
+  <div id="district">Solmara</div>
+</div>
+<div class="hud" id="hud-objective">
+  <div id="mission-name">Free roam</div>
+  <div id="mission-text">Explore Solmara. Missions arrive as you play.</div>
+</div>
+<div class="hud" id="hud-topright">
+  <canvas id="minimap" width="200" height="150"></canvas>
+  <div id="clock">DAY 1 · 09:00</div>
+</div>
+<div class="hud" id="hud-bottomleft">
+  <div><span id="speed">0</span> <span style="font-size:13px;color:var(--ink-dim)">km/h</span></div>
+  <div id="carname">On foot</div>
+  <div id="hint">WASD move · E car · Mouse aim · Click shoot · Esc pause</div>
+</div>
+<div class="hud" id="feed"></div>
+<div class="hud" id="banner"><div class="big"></div><div class="sub"></div></div>
+
+<div class="overlay" id="title-screen">
+  <div class="card">
+    <h1>SOLMARA</h1>
+    <div class="tag">Sun · Sea · Sirens</div>
+    <p>You are <b style="color:var(--ink)">Rae Vega</b>, a wheelman new to Solmara — a sun-soaked coastal
+    city where every street is an opportunity and every siren is a warning. Drive the city, take jobs
+    from fixer Mara, outrun the Solmara PD, and pull off the big score.</p>
+    <div class="controls">
+      <b>W A S D</b> — drive / walk &nbsp;·&nbsp; <b>Shift</b> — sprint &nbsp;·&nbsp; <b>Space</b> — handbrake<br>
+      <b>E</b> — enter / exit car &nbsp;·&nbsp; <b>Mouse</b> — aim &nbsp;·&nbsp; <b>Click</b> — shoot<br>
+      <b>Esc / P</b> — pause &amp; save &nbsp;·&nbsp; <b>M</b> — sound on/off
+    </div>
+    <div>
+      <button class="btn" id="btn-new">NEW GAME</button>
+      <button class="btn ghost hidden" id="btn-continue">CONTINUE</button>
+    </div>
+    <p style="font-size:12px;margin-top:14px">An original game. No real city, person or brand. Progress saves to this browser.</p>
+  </div>
+</div>
+
+<div class="overlay hidden" id="pause-screen">
+  <div class="card">
+    <h2>PAUSED</h2>
+    <p id="pause-stats"></p>
+    <div>
+      <button class="btn" id="btn-resume">RESUME</button>
+      <button class="btn ghost" id="btn-save">SAVE GAME</button>
+      <button class="btn ghost" id="btn-restart-mission">RESTART MISSION</button>
+      <button class="btn ghost" id="btn-quit">QUIT TO TITLE</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay hidden" id="end-screen">
+  <div class="card">
+    <h2 id="end-title">BUSTED</h2>
+    <p id="end-text"></p>
+    <div>
+      <button class="btn" id="btn-retry">TRY AGAIN</button>
+      <button class="btn ghost" id="btn-end-quit">QUIT TO TITLE</button>
+    </div>
+  </div>
+</div>
+
+<script type="module" src="./src/main.js"></script>
+</body>
+</html>
